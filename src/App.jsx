@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useMemo, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Alert, Button, Card, FieldError, Input, Label, ListBox, Select, Switch, Tabs, TextArea, TextField, ToggleButton, ToggleButtonGroup } from '@heroui/react';
 import jsQR from 'jsqr';
@@ -8,6 +8,8 @@ import DecodePanel from './DecodePanel.jsx';
 import ThemeControl from './ThemeControl.jsx';
 import usePersistentStyle from './usePersistentStyle.js';
 import { buildQrSvg, svgToPngBlob } from './qr-design.js';
+import { buildExportFilename } from './export-name.js';
+import { clipboardError, copyQrPng, copyQrSvg } from './clipboard.js';
 
 const INITIAL = { size:43, format:'png', margin:24, dotSize:100, roundness:0, finderRoundness:0, foreground:'#18181B', background:'#FFFFFF', gradient:false, gradientColor:'#2563EB', gradientAngle:0, ecc:'H', logo:null, logoSize:60, logoRoundness:20 };
 const PRESETS = {
@@ -30,7 +32,7 @@ function saveFile(blob, name) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 function Icon({ name }) {
-  const paths = { download:'M10 3v9m-3-3 3 3 3-3M4 13v4h12v-4', check:'m4 10 4 4 8-8', reset:'M4 5v5h5M4 10a6 6 0 1 1 1 5', scan:'M7 3H3v4m10-4h4v4M3 13v4h4m10-4v4h-4M4 10h12' };
+  const paths = { download:'M10 3v9m-3-3 3 3 3-3M4 13v4h12v-4', copy:'M7 7h10v10H7zM13 7V3H3v10h4', check:'m4 10 4 4 8-8', reset:'M4 5v5h5M4 10a6 6 0 1 1 1 5', scan:'M7 3H3v4m10-4h4v4M3 13v4h4m10-4v4h-4M4 10h12' };
   return <svg className="ui-icon" aria-hidden="true" viewBox="0 0 20 20"><path d={paths[name]} /></svg>;
 }
 
@@ -45,12 +47,16 @@ function App() {
   const setFormat = value => setSettings(current => ({...current,format:value}));
   const [pending,setPending] = useState('');
   const [exportError,setExportError] = useState('');
+  const [copyFeedback,setCopyFeedback] = useState({message:'',failed:false});
+  const copyTimer = useRef(null);
+  const lastCopyMessage = useRef('');
   const [logoError,setLogoError] = useState('');
   const [checkResult,setCheckResult] = useState(null);
   const [undoStyle,setUndoStyle] = useState(null);
   const [showPassword,setShowPassword] = useState(false);
   const logoRef = useRef(null);
   const revision = useRef(0);
+  useEffect(() => () => clearTimeout(copyTimer.current), []);
   const changeSetting = useCallback((key,value) => {
     revision.current += 1;
     setSettings(previous => ({...previous,[key]:value}));
@@ -74,6 +80,10 @@ function App() {
     const escape = value => value.replace(/[\\;,:\"]/g,'\\$&');
     return {payload:`WIFI:T:${content.security};S:${escape(content.ssid)};P:${content.security === 'nopass' ? '' : escape(content.password)};;`};
   },[content,kind]);
+  useEffect(() => {
+    clearTimeout(copyTimer.current);
+    setCopyFeedback({message:'',failed:false});
+  }, [settings,source.payload]);
   const deferredSettings = useDeferredValue(settings);
   const deferredPayload = useDeferredValue(source.payload);
   const qr = useMemo(() => {
@@ -91,11 +101,34 @@ function App() {
   async function exportQR() {
     if (!qr?.svg || stale || !source.payload) return;
     setPending('export'); setExportError('');
+    const filename = buildExportFilename({kind,content,format});
     try {
       const blob = format === 'svg' ? new Blob([qr.svg],{type:'image/svg+xml;charset=utf-8'}) : await svgToPngBlob(qr.svg,qr.size);
-      saveFile(blob,`qrcode.${format}`);
+      saveFile(blob,filename);
     } catch (error) { setExportError(error.message || '导出失败，请重试。'); }
     finally { setPending(''); }
+  }
+  async function copyQR() {
+    if (!qr?.svg || stale || !source.payload || pending) return;
+    const currentRevision = revision.current;
+    const copiedFormat = format;
+    clearTimeout(copyTimer.current);
+    setPending('copy'); setCopyFeedback({message:'',failed:false});
+    let message, failed = false;
+    try {
+      // The write starts in this user gesture; PNG generation is a lazy value
+      // inside ClipboardItem, so async rendering does not lose activation.
+      const result = await (copiedFormat === 'png'
+        ? copyQrPng(qr.svg,qr.size,buildExportFilename({kind,content,format:copiedFormat}))
+        : copyQrSvg(qr.svg,buildExportFilename({kind,content,format:copiedFormat})));
+      message = copiedFormat === 'png' ? '已复制 PNG 图片' : result === 'svg-text' ? '已复制 SVG 源码' : '已复制 SVG';
+    } catch (error) { message = clipboardError(error); failed = true; }
+    finally { setPending(''); }
+    if (revision.current !== currentRevision) return;
+    if (message === lastCopyMessage.current) message += '\u00A0';
+    lastCopyMessage.current = message;
+    setCopyFeedback({message,failed});
+    copyTimer.current = setTimeout(() => setCopyFeedback({message:'',failed:false}),failed?6000:3000);
   }
   async function checkQR() {
     if (!qr?.svg || stale) return;
@@ -199,7 +232,11 @@ function App() {
               <div className="export-heading"><h2>导出</h2>{qr?.size&&<span className="dimensions">{qr.size} × {qr.size} px</span>}</div>
               <div className="format-row"><Label id="format-label">格式</Label><ToggleButtonGroup aria-labelledby="format-label" selectionMode="single" disallowEmptySelection selectedKeys={new Set([format])} onSelectionChange={keys=>{const next=[...keys][0];if(next)setFormat(String(next));}} size="sm"><ToggleButton id="png">PNG</ToggleButton><ToggleButton id="svg">SVG</ToggleButton></ToggleButtonGroup></div>
               <RangeControl label="导出尺寸" value={settings.size} onChange={value=>changeSetting('size',value)} />
-              <Button fullWidth onPress={exportQR} isDisabled={!qr?.svg||stale||!source.payload||Boolean(pending)} isPending={pending==='export'}><Icon name="download" />{pending==='export'?'正在导出':`下载 ${format.toUpperCase()}`}</Button>
+              <div className="export-actions">
+                <Button variant="secondary" onPress={copyQR} isDisabled={!qr?.svg||stale||!source.payload||Boolean(pending&&pending!=='copy')} isPending={pending==='copy'}><Icon name="copy" />{pending==='copy'?'正在复制':`复制 ${format.toUpperCase()}`}</Button>
+                <Button onPress={exportQR} isDisabled={!qr?.svg||stale||!source.payload||Boolean(pending)} isPending={pending==='export'}><Icon name="download" />{pending==='export'?'正在导出':`下载 ${format.toUpperCase()}`}</Button>
+              </div>
+              <p className={`export-feedback${copyFeedback.failed?' inline-error':''}`} role="status">{copyFeedback.message}</p>
               {exportError&&<p className="inline-error" role="status">{exportError}</p>}
             </Card.Footer>
           </Card>

@@ -183,9 +183,13 @@ export function buildQrSvg(payload, settings = {}) {
     logoShapes = `<image x="${coordinate(logoX)}" y="${coordinate(logoX)}" width="${coordinate(logoWidth)}" height="${coordinate(logoWidth)}" href="${escapeAttribute(logo)}" preserveAspectRatio="xMidYMid meet" clip-path="url(#${clipID})"${logoFunctionMask ? ` mask="url(#${maskID})"` : ''}/>`;
   }
   const squareRendering = dotRadius === 0 && dotSize === 1 ? ' shape-rendering="crispEdges"' : '';
+  // A noninteger module scale is normal at a fixed export size. Snap only the
+  // straight finder/alignment edges to the raster grid, just like square data
+  // modules; applying this to rounded paths would make their curves jagged.
+  const locatorRendering = finderRadius === 0 ? ' shape-rendering="crispEdges"' : '';
   // Background is painted once. Finder/alignment rings have real geometric
   // holes, so transparent light modules never reveal an underlying dark square.
-  const svg = `<svg xmlns="${SVG_NS}" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="二维码"><defs>${defs.join('')}</defs><rect width="${size}" height="${size}" fill="${background.rgb}" fill-opacity="${background.alpha}"/><g transform="translate(${coordinate(margin)} ${coordinate(margin)}) scale(${moduleSize})"><g fill="${fill}"${foregroundOpacity}><g${squareRendering}>${data.join('')}</g>${finderShapes}${alignmentShapes}</g>${logoShapes}</g></svg>`;
+  const svg = `<svg xmlns="${SVG_NS}" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="二维码"><defs>${defs.join('')}</defs><rect width="${size}" height="${size}" fill="${background.rgb}" fill-opacity="${background.alpha}"/><g transform="translate(${coordinate(margin)} ${coordinate(margin)}) scale(${moduleSize})"><g fill="${fill}"${foregroundOpacity}><g${squareRendering}>${data.join('')}</g><g${locatorRendering}>${finderShapes}${alignmentShapes}</g></g>${logoShapes}</g></svg>`;
   return { svg, size, modules };
 }
 
