@@ -2,7 +2,7 @@
 
 在浏览器中生成、设计和识别二维码，无需数据库或识别后端。
 
-[English](./README.en.md)
+[在线使用](https://play.wangyifang.com/qrcode/) · [English](./README.en.md)
 
 ## 功能
 

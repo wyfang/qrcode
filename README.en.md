@@ -2,7 +2,7 @@
 
 Generate, style and decode QR codes in the browser without a database or decoding backend.
 
-[简体中文](./README.md)
+[Open online](https://play.wangyifang.com/qrcode/) · [简体中文](./README.md)
 
 ## Features
 
