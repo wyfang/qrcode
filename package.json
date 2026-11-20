@@ -1,0 +1,25 @@
+{
+  "name": "qr-studio-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node server.mjs"
+  },
+  "dependencies": {
+    "@heroui/react": "3.2.7",
+    "@heroui/styles": "3.2.7",
+    "jsqr": "1.4.0",
+    "qrcode": "1.5.4",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "tailwind-variants": "4.0.2",
+    "tailwindcss": "4.3.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.5",
+    "esbuild": "0.25.12",
+    "postcss": "8.5.33"
+  }
+}

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="在浏览器中生成、设计和识别二维码，支持透明颜色、Logo 和 PNG、SVG 导出。">
+  <title>二维码</title>
+  <script>
+    (() => {
+      let preference = 'system';
+      try {
+        const saved = localStorage.getItem('qrcode-demo-theme');
+        if (saved === 'light' || saved === 'dark') preference = saved;
+      } catch {}
+      const systemDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+      const theme = preference === 'system' ? (systemDark ? 'dark' : 'light') : preference;
+      const root = document.documentElement;
+      root.dataset.themePreference = preference;
+      root.dataset.theme = theme;
+      root.classList.toggle('dark', theme === 'dark');
+      root.classList.toggle('light', theme === 'light');
+      root.style.colorScheme = theme;
+    })();
+  </script>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="stylesheet" href="./app.css">
+  <script defer src="./app.js"></script>
+</head>
+<body><div id="root"></div><noscript>请开启 JavaScript 使用二维码工具。</noscript></body>
+</html>
