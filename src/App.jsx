@@ -233,8 +233,8 @@ function App() {
               <div className="format-row"><Label id="format-label">格式</Label><ToggleButtonGroup aria-labelledby="format-label" selectionMode="single" disallowEmptySelection selectedKeys={new Set([format])} onSelectionChange={keys=>{const next=[...keys][0];if(next)setFormat(String(next));}} size="sm"><ToggleButton id="png">PNG</ToggleButton><ToggleButton id="svg">SVG</ToggleButton></ToggleButtonGroup></div>
               <RangeControl label="导出尺寸" value={settings.size} onChange={value=>changeSetting('size',value)} />
               <div className="export-actions">
-                <Button variant="secondary" onPress={copyQR} isDisabled={!qr?.svg||stale||!source.payload||Boolean(pending&&pending!=='copy')} isPending={pending==='copy'}><Icon name="copy" />{pending==='copy'?'正在复制':`复制 ${format.toUpperCase()}`}</Button>
-                <Button onPress={exportQR} isDisabled={!qr?.svg||stale||!source.payload||Boolean(pending)} isPending={pending==='export'}><Icon name="download" />{pending==='export'?'正在导出':`下载 ${format.toUpperCase()}`}</Button>
+                <Button fullWidth variant="secondary" onPress={copyQR} isDisabled={!qr?.svg||stale||!source.payload||Boolean(pending&&pending!=='copy')} isPending={pending==='copy'}><Icon name="copy" />{pending==='copy'?'正在复制':`复制 ${format.toUpperCase()}`}</Button>
+                <Button fullWidth onPress={exportQR} isDisabled={!qr?.svg||stale||!source.payload||Boolean(pending)} isPending={pending==='export'}><Icon name="download" />{pending==='export'?'正在导出':`下载 ${format.toUpperCase()}`}</Button>
               </div>
               <p className={`export-feedback${copyFeedback.failed?' inline-error':''}`} role="status">{copyFeedback.message}</p>
               {exportError&&<p className="inline-error" role="status">{exportError}</p>}
